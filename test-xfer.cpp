@@ -12,13 +12,18 @@
 
 using namespace llvm;
 
-static const int Width = 4;
+namespace {
+
+const int Width = 4;
 
 LLVMContext C;
 IRBuilder<> B(C);
 
-int main(int argc, char**argv) {
-  auto M = make_unique<Module>("my cool module", C);
+} // namespace
+  
+int main(void) {
+  auto M = make_unique<Module>("awesome module", C);
+  
 
   return 0;
 }
