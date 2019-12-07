@@ -37,6 +37,21 @@ bool nextKB(KnownBits &K) {
   return true;
 }
   
+std::string KBString(KnownBits Known) {
+  std::string s = "";
+  for (int x = 0; x < Known.getBitWidth(); ++x) {
+    if (Known.Zero.isSignBitSet())
+      s += "0";
+    else if (Known.One.isSignBitSet())
+      s += "1";
+    else
+      s += "?";
+    Known.Zero = Known.Zero << 1;
+    Known.One = Known.One << 1;
+  }
+  return s;
+}
+
 } // namespace
 
 int main(void) {
@@ -60,10 +75,12 @@ int main(void) {
   while (true) {
     auto I = B.CreateAShr(maskKnown(A0, Args[0]), maskKnown(A1, Args[1]));
     auto R = B.CreateRet(I);
-    KnownBits KB;
-    computeKnownBits(I, KB, DL);
+    KnownBits KB = computeKnownBits(I, DL);
     Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
     Cases++;
+
+    M->print(errs(), nullptr);
+    outs() << KBString(KB) << "\n";
 
     if (!nextKB(A0))
       if (!nextKB(A1))
@@ -82,7 +99,6 @@ int main(void) {
     }
   }
   
-  M->print(errs(), nullptr);
   outs() << "total known bits = " << Bits << "\n";
   outs() << "total cases = " << Cases << "\n";
   
