@@ -35,14 +35,18 @@ int main(void) {
   long Bits = 0;
 
   // fixme: loop over possibilties
-  // fixme: masking arguments
-  auto I = B.CreateAShr(Args[0], Args[1]);
-  B.CreateRet(I);
-  KnownBits KB;
-  computeKnownBits(I, KB, DL);
-  Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
-  
-  // fixme: analyze known bits
+
+  KnownBits A0(W), A1(W);
+  while (true) {
+    auto I = B.CreateAShr(Args[0], Args[1]);
+    auto R = B.CreateRet(I);
+    KnownBits KB;
+    computeKnownBits(I, KB, DL);
+    Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
+    
+    R->eraseFromParent();
+    (cast<Instruction>(I))->eraseFromParent();
+  }
   
   M->print(errs(), nullptr);
   outs() << "total known bits = " << Bits << "\n";
