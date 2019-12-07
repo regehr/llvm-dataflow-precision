@@ -20,9 +20,23 @@ LLVMContext C;
 IRBuilder<> B(C);
 
 Value *maskKnown(const KnownBits &K, Value *V) {
-  return V;
+  auto O = B.CreateOr(V, K.One);
+  auto A = B.CreateAnd(O, ~K.Zero);
+  return A;
 }
 
+bool nextKB(KnownBits &K) {
+  do {
+    K.Zero = K.Zero + 1;
+    if (K.Zero == 0) {
+      K.One = K.One + 1;
+      if (K.One == 0)
+        return false;
+    }
+  } while (K.hasConflict());
+  return true;
+}
+  
 } // namespace
 
 int main(void) {
@@ -36,7 +50,7 @@ int main(void) {
   for (auto &A : F->args())
     Args.push_back(&A);
   auto DL = M->getDataLayout();
-  long Bits = 0;
+  long Bits = 0, Cases = 0;
 
   // fixme: iterate over possibilties
   // fixme: parameterize on instructio
@@ -49,8 +63,13 @@ int main(void) {
     KnownBits KB;
     computeKnownBits(I, KB, DL);
     Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
+    Cases++;
+
+    if (!nextKB(A0))
+      if (!nextKB(A1))
+        break;
     
-    R->eraseFromParent();
+    //R->eraseFromParent();
     // this is not good code but should be fine for very small number
     // of instructions
     while (!BB->empty()) {
@@ -65,6 +84,7 @@ int main(void) {
   
   M->print(errs(), nullptr);
   outs() << "total known bits = " << Bits << "\n";
+  outs() << "total cases = " << Cases << "\n";
   
   return 0;
 }
