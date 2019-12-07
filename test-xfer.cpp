@@ -14,16 +14,21 @@ using namespace llvm;
 
 namespace {
 
-const int Width = 4;
+const int W = 4;
 
 LLVMContext C;
 IRBuilder<> B(C);
+
+
 
 } // namespace
   
 int main(void) {
   auto M = make_unique<Module>("awesome module", C);
+  std::vector<Type *> T(2, Type::getIntNTy(C, W));
+  FunctionType *FT = FunctionType::get(Type::getIntNTy(C, W), T, false);
+  Function *F = Function::Create(FT, Function::ExternalLinkage, "test", M.get());
   
-
+  
   return 0;
 }
