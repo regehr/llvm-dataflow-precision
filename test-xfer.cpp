@@ -31,18 +31,21 @@ int main(void) {
   std::vector<Argument *> Args;
   for (auto &A : F->args())
     Args.push_back(&A);
+  auto DL = M->getDataLayout();
+  long Bits = 0;
 
   // fixme: loop over possibilties
   // fixme: masking arguments
   auto I = B.CreateAShr(Args[0], Args[1]);
   B.CreateRet(I);
+  KnownBits KB;
+  computeKnownBits(I, KB, DL);
+  Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
   
-  verifyFunction(*F);
-  verifyModule(*M);
-
   // fixme: analyze known bits
   
   M->print(errs(), nullptr);
+  outs() << "total known bits = " << Bits << "\n";
   
   return 0;
 }
