@@ -9,12 +9,13 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <iostream>
+#include <iomanip>
 
 using namespace llvm;
 
 namespace {
 
-const int W = 4;
+const int W = 6;
 
 LLVMContext C;
 IRBuilder<> B(C);
@@ -65,28 +66,30 @@ int main(void) {
   for (auto &A : F->args())
     Args.push_back(&A);
   auto DL = M->getDataLayout();
-  long Bits = 0, Cases = 0;
+  long Bits = 0, Cases = 0, TotalBits = 0;
 
-  // fixme: iterate over possibilties
-  // fixme: parameterize on instructio
+  // fixme: parameterize on instruction
+  // fixme: support unary and ternary instructions
   // fixme: support pseudo-unary and constant arguments
 
-  KnownBits A0(W), A1(W);
+  KnownBits K0(W), K1(W);
   while (true) {
-    auto I = B.CreateAShr(maskKnown(A0, Args[0]), maskKnown(A1, Args[1]));
+    auto I = B.CreateURem(maskKnown(K0, Args[0]), maskKnown(K1, Args[1]));
     auto R = B.CreateRet(I);
     KnownBits KB = computeKnownBits(I, DL);
     Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
     Cases++;
+    TotalBits += 2 * W;
 
-    M->print(errs(), nullptr);
-    outs() << KBString(KB) << "\n";
+    if (0) {
+      M->print(errs(), nullptr);
+      outs() << KBString(KB) << "\n";
+    }
 
-    if (!nextKB(A0))
-      if (!nextKB(A1))
+    if (!nextKB(K0))
+      if (!nextKB(K1))
         break;
     
-    //R->eraseFromParent();
     // this is not good code but should be fine for very small number
     // of instructions
     while (!BB->empty()) {
@@ -99,8 +102,10 @@ int main(void) {
     }
   }
   
-  outs() << "total known bits = " << Bits << "\n";
+  outs() << std::fixed << std::showpoint << std::setprecision(4);
   outs() << "total cases = " << Cases << "\n";
+  outs() << "total known bits = " << Bits << "\n";
+  outs() << "% known bits = " << (100.0 * Bits / TotalBits) << "\n";
   
   return 0;
 }
