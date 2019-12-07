@@ -47,8 +47,8 @@ std::string KBString(KnownBits Known) {
       s += "1";
     else
       s += "?";
-    Known.Zero = Known.Zero << 1;
-    Known.One = Known.One << 1;
+    Known.Zero <<= 1;
+    Known.One <<= 1;
   }
   return s;
 }
@@ -66,7 +66,7 @@ int main(void) {
   for (auto &A : F->args())
     Args.push_back(&A);
   auto DL = M->getDataLayout();
-  long Bits = 0, Cases = 0, TotalBits = 0;
+  long Bits = 0, Cases = 0;
 
   // fixme: parameterize on instruction
   // fixme: support unary and ternary instructions
@@ -79,9 +79,8 @@ int main(void) {
     KnownBits KB = computeKnownBits(I, DL);
     Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
     Cases++;
-    TotalBits += 2 * W;
 
-    if (0) {
+    if (false) {
       M->print(errs(), nullptr);
       outs() << KBString(KB) << "\n";
     }
@@ -91,7 +90,7 @@ int main(void) {
         break;
     
     // this is not good code but should be fine for very small number
-    // of instructions
+    // of instructions, as we have here
     while (!BB->empty()) {
       for (auto &I2 : *BB) {
         if (I2.hasNUses(0)) {
@@ -102,10 +101,8 @@ int main(void) {
     }
   }
   
-  outs() << std::fixed << std::showpoint << std::setprecision(4);
   outs() << "total cases = " << Cases << "\n";
   outs() << "total known bits = " << Bits << "\n";
-  outs() << "% known bits = " << (100.0 * Bits / TotalBits) << "\n";
   
   return 0;
 }
