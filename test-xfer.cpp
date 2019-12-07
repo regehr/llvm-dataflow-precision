@@ -19,8 +19,12 @@ const int W = 4;
 LLVMContext C;
 IRBuilder<> B(C);
 
+Value *maskKnown(const KnownBits &K, Value *V) {
+  return V;
+}
+
 } // namespace
-  
+
 int main(void) {
   auto M = make_unique<Module>("", C);
   std::vector<Type *> T(2, Type::getIntNTy(C, W));
@@ -34,18 +38,29 @@ int main(void) {
   auto DL = M->getDataLayout();
   long Bits = 0;
 
-  // fixme: loop over possibilties
+  // fixme: iterate over possibilties
+  // fixme: parameterize on instructio
+  // fixme: support pseudo-unary and constant arguments
 
   KnownBits A0(W), A1(W);
   while (true) {
-    auto I = B.CreateAShr(Args[0], Args[1]);
+    auto I = B.CreateAShr(maskKnown(A0, Args[0]), maskKnown(A1, Args[1]));
     auto R = B.CreateRet(I);
     KnownBits KB;
     computeKnownBits(I, KB, DL);
     Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
     
     R->eraseFromParent();
-    (cast<Instruction>(I))->eraseFromParent();
+    // this is not good code but should be fine for very small number
+    // of instructions
+    while (!BB->empty()) {
+      for (auto &I2 : *BB) {
+        if (I2.hasNUses(0)) {
+          I2.eraseFromParent();
+          break;
+        }
+      }
+    }
   }
   
   M->print(errs(), nullptr);
