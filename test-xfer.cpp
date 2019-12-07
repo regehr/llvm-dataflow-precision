@@ -19,18 +19,30 @@ const int W = 4;
 LLVMContext C;
 IRBuilder<> B(C);
 
-
-
 } // namespace
   
 int main(void) {
-  auto M = make_unique<Module>("awesome module", C);
+  auto M = make_unique<Module>("", C);
   std::vector<Type *> T(2, Type::getIntNTy(C, W));
   FunctionType *FT = FunctionType::get(Type::getIntNTy(C, W), T, false);
   Function *F = Function::Create(FT, Function::ExternalLinkage, "test", M.get());
   BasicBlock *BB = BasicBlock::Create(C, "", F);
-  Builder.SetInsertPoint(BB);
+  B.SetInsertPoint(BB);
+  std::vector<Argument *> Args;
+  for (auto &A : F->args())
+    Args.push_back(&A);
 
+  // fixme: loop over possibilties
+  // fixme: masking arguments
+  auto I = B.CreateAShr(Args[0], Args[1]);
+  B.CreateRet(I);
+  
+  verifyFunction(*F);
+  verifyModule(*M);
+
+  // fixme: analyze known bits
+  
+  M->print(errs(), nullptr);
   
   return 0;
 }
