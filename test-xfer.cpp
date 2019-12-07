@@ -28,7 +28,9 @@ int main(void) {
   std::vector<Type *> T(2, Type::getIntNTy(C, W));
   FunctionType *FT = FunctionType::get(Type::getIntNTy(C, W), T, false);
   Function *F = Function::Create(FT, Function::ExternalLinkage, "test", M.get());
-  
+  BasicBlock *BB = BasicBlock::Create(C, "", F);
+  Builder.SetInsertPoint(BB);
+
   
   return 0;
 }
