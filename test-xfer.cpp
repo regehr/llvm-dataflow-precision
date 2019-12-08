@@ -11,6 +11,9 @@
 #include <iostream>
 #include <iomanip>
 
+// TODO: support unary and ternary instructions
+// TODO: support pseudo-unary and constant arguments
+
 using namespace llvm;
 
 namespace {
@@ -53,7 +56,7 @@ std::string KBString(KnownBits Known) {
   return s;
 }
 
-  void test(Instruction::BinaryOps Op) {
+void test(Instruction::BinaryOps Op) {
   auto M = make_unique<Module>("", C);
   std::vector<Type *> T(2, Type::getIntNTy(C, W));
   FunctionType *FT = FunctionType::get(Type::getIntNTy(C, W), T, false);
@@ -65,10 +68,6 @@ std::string KBString(KnownBits Known) {
     Args.push_back(&A);
   auto DL = M->getDataLayout();
   long Bits = 0, Cases = 0;
-
-  // fixme: parameterize on instruction
-  // fixme: support unary and ternary instructions
-  // fixme: support pseudo-unary and constant arguments
 
   KnownBits K0(W), K1(W);
   while (true) {
@@ -103,6 +102,24 @@ std::string KBString(KnownBits Known) {
   outs() << "total cases = " << Cases << "\n";
   outs() << "total known bits = " << Bits << "\n";
 }
+
+  std::vector<Instruction> Ops {
+                                   Instruction::Add,
+#if 0
+                                   BinaryOperator::Sub,
+                                   BinaryOperator::Mul,
+                                   BinaryOperator::UDiv,
+                                   BinaryOperator::SDiv,
+                                   BinaryOperator::URem,
+                                   BinaryOperator::SRem,
+                                   BinaryOperator::Shl,
+                                   BinaryOperator::LShr,
+                                   BinaryOperator::AShr,
+                                   BinaryOperator::And,
+                                   BinaryOperator::Or,
+                                   BinaryOperator::Xor,
+#endif
+                                   };
   
 } // namespace
 
