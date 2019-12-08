@@ -15,7 +15,7 @@ using namespace llvm;
 
 namespace {
 
-const int W = 6;
+const int W = 5;
 
 LLVMContext C;
 IRBuilder<> B(C);
@@ -28,16 +28,16 @@ Value *maskKnown(const KnownBits &K, Value *V) {
 
 bool nextKB(KnownBits &K) {
   do {
-    K.Zero = K.Zero + 1;
+    K.Zero += 1;
     if (K.Zero == 0) {
-      K.One = K.One + 1;
+      K.One += 1;
       if (K.One == 0)
         return false;
     }
   } while (K.hasConflict());
   return true;
 }
-  
+
 std::string KBString(KnownBits Known) {
   std::string s = "";
   for (int x = 0; x < Known.getBitWidth(); ++x) {
@@ -46,16 +46,14 @@ std::string KBString(KnownBits Known) {
     else if (Known.One.isSignBitSet())
       s += "1";
     else
-      s += "?";
+      s += "x";
     Known.Zero <<= 1;
     Known.One <<= 1;
   }
   return s;
 }
 
-} // namespace
-
-int main(void) {
+  void test(Instruction::BinaryOps Op) {
   auto M = make_unique<Module>("", C);
   std::vector<Type *> T(2, Type::getIntNTy(C, W));
   FunctionType *FT = FunctionType::get(Type::getIntNTy(C, W), T, false);
@@ -74,7 +72,8 @@ int main(void) {
 
   KnownBits K0(W), K1(W);
   while (true) {
-    auto I = B.CreateURem(maskKnown(K0, Args[0]), maskKnown(K1, Args[1]));
+    auto I = BinaryOperator::Create(Op, maskKnown(K0, Args[0]), maskKnown(K1, Args[1]));
+    B.Insert(I);
     auto R = B.CreateRet(I);
     KnownBits KB = computeKnownBits(I, DL);
     Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
@@ -89,8 +88,8 @@ int main(void) {
       if (!nextKB(K1))
         break;
     
-    // this is not good code but should be fine for very small number
-    // of instructions, as we have here
+    // this is not good code but should be fine for a very small
+    // number of instructions, as we have here
     while (!BB->empty()) {
       for (auto &I2 : *BB) {
         if (I2.hasNUses(0)) {
@@ -103,6 +102,11 @@ int main(void) {
   
   outs() << "total cases = " << Cases << "\n";
   outs() << "total known bits = " << Bits << "\n";
+}
   
+} // namespace
+
+int main(void) {
+  test(BinaryOperator::URem);
   return 0;
 }
