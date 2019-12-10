@@ -18,7 +18,7 @@ using namespace llvm;
 
 namespace {
 
-const int W = 5;
+const int W = 8;
 
 LLVMContext C;
 IRBuilder<> B(C);
@@ -29,7 +29,9 @@ Value *maskKnown(const KnownBits &K, Value *V) {
   return A;
 }
 
-bool nextKB(KnownBits &K) {
+
+// slow, not clever, but obviously correct
+bool nextKB1(KnownBits &K) {
   do {
     K.Zero += 1;
     if (K.Zero == 0) {
@@ -38,6 +40,18 @@ bool nextKB(KnownBits &K) {
         return false;
     }
   } while (K.hasConflict());
+  return true;
+}
+
+// fast, clever, but less clearly correct
+bool nextKB(KnownBits &K) {
+  auto NotOne = ~K.One;
+  K.Zero = (K.Zero - NotOne) & NotOne;
+  if (K.Zero == 0) {
+    K.One += 1;
+    if (K.One == 0)
+      return false;
+  }
   return true;
 }
 
@@ -120,6 +134,7 @@ void test(const BinOp &Op) {
 
 std::vector<BinOp> Ops {
   { Instruction::Add, false, false, false },
+#if 0
   { Instruction::Add, true, false, false },
   { Instruction::Add, false, true, false },
   { Instruction::Add, true, true, false },
@@ -145,6 +160,7 @@ std::vector<BinOp> Ops {
   { Instruction::And, false, false, false },
   { Instruction::Or, false, false, false },
   { Instruction::Xor, false, false, false },
+#endif
 };
   
 } // namespace
