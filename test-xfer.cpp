@@ -11,9 +11,6 @@
 #include <iostream>
 #include <iomanip>
 
-// TODO: support unary and ternary instructions
-// TODO: support pseudo-unary and constant arguments
-
 using namespace llvm;
 
 namespace {
