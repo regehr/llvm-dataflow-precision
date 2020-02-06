@@ -89,7 +89,7 @@ void test(const BinOp &Op) {
   KnownBits K0(W), K1(W);
   while (true) {
     auto I = B.CreateBinOp(Op.Opcode, maskKnown(K0, Args[0]), maskKnown(K1, Args[1]));
-#if 0
+#if 1
     I->setHasNoSignedWrap(Op.nsw);
     I->setHasNoUnsignedWrap(Op.nuw);
     I->setIsExact(Op.exact);
