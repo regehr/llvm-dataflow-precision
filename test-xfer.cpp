@@ -8,6 +8,26 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/NoFolder.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/ADT/StringExtras.h"
+#include "llvm/ADT/Triple.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/InitializePasses.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IRReader/IRReader.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/PrettyStackTrace.h"
+#include "llvm/Support/Signals.h"
+#include "llvm/Support/SourceMgr.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/Transforms/Utils/Cloning.h"
 
 #include <memory>
 #include <iostream>
@@ -73,6 +93,29 @@ struct BinOp {
   bool nsw, nuw, exact;
 };
 
+int countInsns(BasicBlock *BB) {
+  int count = 0;
+  for (auto &I2 : *BB)
+    ++count;
+  return count;
+}
+
+void optimizeModule(llvm::Module *M) {
+  auto FPM = new legacy::FunctionPassManager(M);
+  PassManagerBuilder PB;
+  PB.OptLevel = 2;
+  PB.SizeLevel = 0;
+  PB.populateFunctionPassManager(*FPM);
+  PB.populateModulePassManager(*FPM);
+  FPM->doInitialization();
+  for (Function &F : *M) {
+    outs() << "optimizing " << F.getName() << "\n";
+    FPM->run(F);
+  }
+  FPM->doFinalization();
+  delete FPM;
+}
+
 void test(const BinOp &Op) {
   auto M = std::make_unique<Module>("", C);
   std::vector<Type *> T(2, Type::getIntNTy(C, W));
@@ -97,6 +140,12 @@ void test(const BinOp &Op) {
 #endif
     auto R = B.CreateRet(I);
 
+    int before = countInsns(BB);
+    optimizeModule(M.get());
+    int after = countInsns(BB);
+    if (before != after)
+      outs() << "  insns went from " << before << " to " << after << "\n";
+    
     KnownBits KB = computeKnownBits(I, DL);
     Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
     Cases++;

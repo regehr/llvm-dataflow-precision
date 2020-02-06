@@ -21,6 +21,6 @@ add_definitions(${LLVM_DEFINITIONS})
 
 add_executable(test-xfer test-xfer.cpp)
 
-llvm_map_components_to_libnames(llvm_libs support core irreader analysis)
+llvm_map_components_to_libnames(llvm_libs support core irreader analysis passes)
 
 target_link_libraries(test-xfer ${llvm_libs})
