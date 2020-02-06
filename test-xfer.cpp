@@ -90,9 +90,10 @@ void test(const BinOp &Op) {
   while (true) {
     auto I = B.CreateBinOp(Op.Opcode, maskKnown(K0, Args[0]), maskKnown(K1, Args[1]));
 #if 1
-    I->setHasNoSignedWrap(Op.nsw);
-    I->setHasNoUnsignedWrap(Op.nuw);
-    I->setIsExact(Op.exact);
+    auto B = dyn_cast<BinOp>(I);
+    B->setHasNoSignedWrap(Op.nsw);
+    B->setHasNoUnsignedWrap(Op.nuw);
+    B->setIsExact(Op.exact);
 #endif
     auto R = B.CreateRet(I);
 
