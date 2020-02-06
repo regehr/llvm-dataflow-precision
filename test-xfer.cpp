@@ -89,7 +89,7 @@ void test(const BinOp &Op) {
   KnownBits K0(W), K1(W);
   while (true) {
     auto I = B.CreateBinOp(Op.Opcode, maskKnown(K0, Args[0]), maskKnown(K1, Args[1]));
-#if 1
+#if 0
     auto B = dyn_cast<BinOp>(I);
     B->setHasNoSignedWrap(Op.nsw);
     B->setHasNoUnsignedWrap(Op.nuw);
@@ -137,7 +137,7 @@ void test(const BinOp &Op) {
 
 std::vector<BinOp> Ops {
   { Instruction::Add, false, false, false },
-#if 0
+#if 1
   { Instruction::Add, true, false, false },
   { Instruction::Add, false, true, false },
   { Instruction::Add, true, true, false },
