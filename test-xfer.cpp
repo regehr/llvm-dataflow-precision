@@ -101,19 +101,18 @@ int countInsns(BasicBlock *BB) {
 }
 
 void optimizeModule(llvm::Module *M) {
-  auto FPM = new legacy::FunctionPassManager(M);
+  legacy::FunctionPassManager FPM(M);
+  FPM.doInitialization();
   PassManagerBuilder PB;
   PB.OptLevel = 2;
   PB.SizeLevel = 0;
-  PB.populateFunctionPassManager(*FPM);
-  PB.populateModulePassManager(*FPM);
-  FPM->doInitialization();
+  PB.populateFunctionPassManager(FPM);
+  PB.populateModulePassManager(FPM);
   for (Function &F : *M) {
     outs() << "optimizing " << F.getName() << "\n";
-    FPM->run(F);
+    FPM.run(F);
   }
-  FPM->doFinalization();
-  delete FPM;
+  FPM.doFinalization();
 }
 
 void test(const BinOp &Op) {
