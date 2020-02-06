@@ -1,37 +1,34 @@
 #include "llvm/ADT/APInt.h"
-#include "llvm/Analysis/ValueTracking.h"
-#include "llvm/Support/KnownBits.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/PassManager.h"
-#include "llvm/IR/Verifier.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/IR/NoFolder.h"
-#include "llvm/Support/CommandLine.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Bitcode/BitcodeReader.h"
-#include "llvm/InitializePasses.h"
-#include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/Module.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/NoFolder.h"
+#include "llvm/IR/PassManager.h"
+#include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
+#include "llvm/InitializePasses.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/KnownBits.h"
 #include "llvm/Support/PrettyStackTrace.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/SourceMgr.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 
-#include <memory>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
+#include <memory>
 
 using namespace llvm;
 
@@ -102,12 +99,12 @@ int countInsns(BasicBlock *BB) {
 
 void optimizeModule(llvm::Module *M) {
   legacy::FunctionPassManager FPM(M);
-  FPM.doInitialization();
   PassManagerBuilder PB;
   PB.OptLevel = 2;
   PB.SizeLevel = 0;
   PB.populateFunctionPassManager(FPM);
   PB.populateModulePassManager(FPM);
+  FPM.doInitialization();
   for (Function &F : *M) {
     outs() << "optimizing " << F.getName() << "\n";
     FPM.run(F);
@@ -119,7 +116,8 @@ void test(const BinOp &Op) {
   auto M = std::make_unique<Module>("", C);
   std::vector<Type *> T(2, Type::getIntNTy(C, W));
   FunctionType *FT = FunctionType::get(Type::getIntNTy(C, W), T, false);
-  Function *F = Function::Create(FT, Function::ExternalLinkage, "test", M.get());
+  Function *F =
+      Function::Create(FT, Function::ExternalLinkage, "test", M.get());
   BasicBlock *BB = BasicBlock::Create(C, "", F);
   B.SetInsertPoint(BB);
   std::vector<Argument *> Args;
@@ -130,7 +128,8 @@ void test(const BinOp &Op) {
 
   KnownBits K0(W), K1(W);
   while (true) {
-    auto I = B.CreateBinOp(Op.Opcode, maskKnown(K0, Args[0]), maskKnown(K1, Args[1]));
+    auto I = B.CreateBinOp(Op.Opcode, maskKnown(K0, Args[0]),
+                           maskKnown(K1, Args[1]));
 #if 0
     auto B = dyn_cast<BinOp>(I);
     B->setHasNoSignedWrap(Op.nsw);
@@ -144,7 +143,7 @@ void test(const BinOp &Op) {
     int after = countInsns(BB);
     if (before != after)
       outs() << "  insns went from " << before << " to " << after << "\n";
-    
+
     KnownBits KB = computeKnownBits(I, DL);
     Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
     Cases++;
@@ -170,7 +169,7 @@ void test(const BinOp &Op) {
       }
     }
 #endif
-  }  
+  }
 
   outs() << Instruction::getOpcodeName(Op.Opcode) << " ";
   if (Op.nsw)
@@ -184,36 +183,36 @@ void test(const BinOp &Op) {
 }
 
 std::vector<BinOp> Ops {
-  { Instruction::Add, false, false, false },
+  {Instruction::Add, false, false, false},
 #if 1
-  { Instruction::Add, true, false, false },
-  { Instruction::Add, false, true, false },
-  { Instruction::Add, true, true, false },
-  { Instruction::Sub, false, false, false },
-  { Instruction::Sub, true, false, false },
-  { Instruction::Sub, false, true, false },
-  { Instruction::Sub, true, true, false },
-  { Instruction::Mul, false, false, false },
-  { Instruction::Mul, true, false, false },
-  { Instruction::Mul, false, true, false },
-  { Instruction::Mul, true, true, false },
-  { Instruction::UDiv, false, false, false },
-  { Instruction::UDiv, false, false, true },
-  { Instruction::SDiv, false, false, false },
-  { Instruction::SDiv, false, false, true },
-  { Instruction::URem, false, false, false },
-  { Instruction::SRem, false, false, false },
-  { Instruction::Shl, false, false, false },
-  { Instruction::LShr, false, false, false },
-  { Instruction::LShr, false, false, true },
-  { Instruction::AShr, false, false, false },
-  { Instruction::AShr, false, false, true },
-  { Instruction::And, false, false, false },
-  { Instruction::Or, false, false, false },
-  { Instruction::Xor, false, false, false },
+      {Instruction::Add, true, false, false},
+      {Instruction::Add, false, true, false},
+      {Instruction::Add, true, true, false},
+      {Instruction::Sub, false, false, false},
+      {Instruction::Sub, true, false, false},
+      {Instruction::Sub, false, true, false},
+      {Instruction::Sub, true, true, false},
+      {Instruction::Mul, false, false, false},
+      {Instruction::Mul, true, false, false},
+      {Instruction::Mul, false, true, false},
+      {Instruction::Mul, true, true, false},
+      {Instruction::UDiv, false, false, false},
+      {Instruction::UDiv, false, false, true},
+      {Instruction::SDiv, false, false, false},
+      {Instruction::SDiv, false, false, true},
+      {Instruction::URem, false, false, false},
+      {Instruction::SRem, false, false, false},
+      {Instruction::Shl, false, false, false},
+      {Instruction::LShr, false, false, false},
+      {Instruction::LShr, false, false, true},
+      {Instruction::AShr, false, false, false},
+      {Instruction::AShr, false, false, true},
+      {Instruction::And, false, false, false},
+      {Instruction::Or, false, false, false},
+      {Instruction::Xor, false, false, false},
 #endif
 };
-  
+
 } // namespace
 
 int main(void) {
