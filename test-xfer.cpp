@@ -7,7 +7,9 @@
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/NoFolder.h"
 
+#include <memory>
 #include <iostream>
 #include <iomanip>
 
@@ -15,17 +17,16 @@ using namespace llvm;
 
 namespace {
 
-const int W = 8;
+const int W = 4;
 
 LLVMContext C;
-IRBuilder<> B(C);
+IRBuilder<NoFolder> B(C);
 
 Value *maskKnown(const KnownBits &K, Value *V) {
   auto O = B.CreateOr(V, K.One);
   auto A = B.CreateAnd(O, ~K.Zero);
   return A;
 }
-
 
 // slow, not clever, but obviously correct
 bool nextKB1(KnownBits &K) {
@@ -73,7 +74,7 @@ struct BinOp {
 };
 
 void test(const BinOp &Op) {
-  auto M = make_unique<Module>("", C);
+  auto M = std::make_unique<Module>("", C);
   std::vector<Type *> T(2, Type::getIntNTy(C, W));
   FunctionType *FT = FunctionType::get(Type::getIntNTy(C, W), T, false);
   Function *F = Function::Create(FT, Function::ExternalLinkage, "test", M.get());
@@ -87,12 +88,14 @@ void test(const BinOp &Op) {
 
   KnownBits K0(W), K1(W);
   while (true) {
-    auto I = BinaryOperator::Create(Op.Opcode, maskKnown(K0, Args[0]), maskKnown(K1, Args[1]));
+    auto I = B.CreateBinOp(Op.Opcode, maskKnown(K0, Args[0]), maskKnown(K1, Args[1]));
+#if 0
     I->setHasNoSignedWrap(Op.nsw);
     I->setHasNoUnsignedWrap(Op.nuw);
     I->setIsExact(Op.exact);
-    B.Insert(I);
+#endif
     auto R = B.CreateRet(I);
+
     KnownBits KB = computeKnownBits(I, DL);
     Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
     Cases++;
@@ -105,7 +108,8 @@ void test(const BinOp &Op) {
     if (!nextKB(K0))
       if (!nextKB(K1))
         break;
-    
+
+#if 1
     // this is not good code but should be fine for a very small
     // number of instructions, as we have here
     while (!BB->empty()) {
@@ -116,7 +120,8 @@ void test(const BinOp &Op) {
         }
       }
     }
-  }
+#endif
+  }  
 
   outs() << Instruction::getOpcodeName(Op.Opcode) << " ";
   if (Op.nsw)
