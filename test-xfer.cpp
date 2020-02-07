@@ -99,17 +99,17 @@ int countInsns(BasicBlock *BB) {
 
 void optimizeModule(llvm::Module *M) {
   legacy::FunctionPassManager FPM(M);
+  legacy::PassManager MPM;
   PassManagerBuilder PB;
   PB.OptLevel = 2;
   PB.SizeLevel = 0;
   PB.populateFunctionPassManager(FPM);
-  PB.populateModulePassManager(FPM);
+  PB.populateModulePassManager(MPM);
   FPM.doInitialization();
-  for (Function &F : *M) {
-    outs() << "optimizing " << F.getName() << "\n";
+  for (Function &F : *M)
     FPM.run(F);
-  }
   FPM.doFinalization();
+  MPM.run(*M);
 }
 
 void test(const BinOp &Op) {
@@ -138,12 +138,16 @@ void test(const BinOp &Op) {
 #endif
     auto R = B.CreateRet(I);
 
-    int before = countInsns(BB);
-    optimizeModule(M.get());
-    int after = countInsns(BB);
-    if (before != after)
-      outs() << "  insns went from " << before << " to " << after << "\n";
-
+    if (false) {
+      int before = countInsns(BB);
+      optimizeModule(M.get());
+      int after = countInsns(BB);
+      if (before != after) {
+        outs() << "  insns went from " << before << " to " << after << "\n";
+        outs() << *F << "\n";
+      }
+    }
+      
     KnownBits KB = computeKnownBits(I, DL);
     Bits += KB.Zero.countPopulation() + KB.One.countPopulation();
     Cases++;
@@ -215,7 +219,23 @@ std::vector<BinOp> Ops {
 
 } // namespace
 
-int main(void) {
+int main(int argc, char *argv[]) {
+  InitLLVM X(argc, argv);
+
+  PassRegistry &Registry = *PassRegistry::getPassRegistry();
+  initializeCore(Registry);
+  initializeScalarOpts(Registry);
+  initializeIPO(Registry);
+  initializePostDominatorTreeWrapperPassPass(Registry);
+  initializeIPSCCPLegacyPassPass(Registry);
+  initializeDominatorTreeWrapperPassPass(Registry);
+  initializeAnalysis(Registry);
+  initializeTransformUtils(Registry);
+  initializeInstCombine(Registry);
+  initializeAggressiveInstCombine(Registry);
+  initializeInstrumentation(Registry);
+  initializeTarget(Registry);
+
   for (auto &Op : Ops)
     test(Op);
   return 0;
